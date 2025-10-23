@@ -659,4 +659,13 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     function fixTotalPendingFunds_(uint256 totalPendingFunds_) external onlyOwner {
         _vaultStorage.totalPendingFunds = totalPendingFunds_;
     }
+
+    function fixPendingClaimRewardsDebts(uint256 poolId_, uint256[] memory tokenIds_) public onlyOwner {
+        _clearPendingClaimTokens(poolId_, tokenIds_);
+    }
+
+    function getPendingClaimRewardsDebts(uint256 poolId_, uint256 tokenId_) public view returns (int256, int256) {
+        IApeCoinStaking.Position memory position_ = _vaultStorage.apeCoinStaking.nftPosition(poolId_, tokenId_);
+        return (_vaultStorage.pendingClaimRewardsDebts[poolId_][tokenId_], position_.rewardsDebt);
+    }
 }

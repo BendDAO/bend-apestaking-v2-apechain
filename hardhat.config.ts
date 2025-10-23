@@ -106,14 +106,14 @@ const config: HardhatUserConfig = {
       sepolia: ETHERSCAN_KEY,
       mainnet: ETHERSCAN_KEY,
       curtis: ETHERSCAN_KEY,
-      apechain: ETHERSCAN_KEY_APECHAIN,
+      apechain: ETHERSCAN_KEY,
     },
     customChains: [
       {
         network: "apechain",
         chainId: 33139,
         urls: {
-          apiURL: "https://api.apescan.io/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=33139",
           browserURL: "https://apescan.io",
         },
       },
@@ -121,8 +121,8 @@ const config: HardhatUserConfig = {
         network: "curtis",
         chainId: 33111,
         urls: {
-          apiURL: "https://curtis.explorer.caldera.xyz/api",
-          browserURL: "https://curtis.explorer.caldera.xyz/",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=33111",
+          browserURL: "https://curtis.apescan.io/",
         },
       },
     ],
