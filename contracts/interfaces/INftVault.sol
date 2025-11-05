@@ -135,4 +135,6 @@ interface INftVault is IERC721ReceiverUpgradeable {
     function claimBakcPool(uint256[] calldata tokenIds_, address recipient_) external returns (uint256 rewards);
 
     function withdrawPendingFunds(address recipient_) external;
+
+    function fixPendingClaimRewardsDebts(uint256 poolId_, uint256[] calldata tokenIds_) external;
 }

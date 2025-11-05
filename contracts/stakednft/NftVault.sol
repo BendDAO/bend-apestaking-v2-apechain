@@ -481,8 +481,14 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256[] memory needClaimTokenIdsRaw_ = new uint256[](tokenIds_.length);
         uint256 curClaimIdx = 0;
         uint256 tokenId_;
+        uint256 rawRewards_;
         for (uint256 i = 0; i < tokenIds_.length; i++) {
             tokenId_ = tokenIds_[i];
+
+            rawRewards_ = _vaultStorage.apeCoinStaking.pendingRewards(poolId_, tokenId_);
+            if (rawRewards_ == 0) {
+                continue;
+            }
 
             position_ = _vaultStorage.apeCoinStaking.nftPosition(poolId_, tokenId_);
             pendingClaimRewardsDebt_ = _vaultStorage.pendingClaimRewardsDebts[poolId_][tokenId_];
@@ -660,7 +666,7 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         _vaultStorage.totalPendingFunds = totalPendingFunds_;
     }
 
-    function fixPendingClaimRewardsDebts(uint256 poolId_, uint256[] memory tokenIds_) public onlyOwner {
+    function fixPendingClaimRewardsDebts(uint256 poolId_, uint256[] calldata tokenIds_) public onlyAuthorized {
         _clearPendingClaimTokens(poolId_, tokenIds_);
     }
 

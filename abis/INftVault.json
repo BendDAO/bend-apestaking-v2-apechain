@@ -270,6 +270,24 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "poolId_",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "tokenIds_",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "fixPendingClaimRewardsDebts",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "nft_",
         "type": "address"

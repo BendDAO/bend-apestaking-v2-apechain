@@ -109,6 +109,14 @@ contract BendStakeManager is IStakeManager, OwnableUpgradeable, ReentrancyGuardU
         _;
     }
 
+    modifier onlyOwnerOrBot() {
+        require(
+            (msg.sender == owner()) || (msg.sender == _stakerStorage.botAdmin),
+            "BendStakeManager: caller is not authorized"
+        );
+        _;
+    }
+
     function initialize(
         IApeCoinStaking apeStaking_,
         ICoinPool coinPool_,
@@ -649,6 +657,10 @@ contract BendStakeManager is IStakeManager, OwnableUpgradeable, ReentrancyGuardU
 
     function fixPendingFeeAmount(uint256 pendingFeeAmount_) external onlyOwner {
         _stakerStorage.pendingFeeAmount = pendingFeeAmount_;
+    }
+
+    function fixPendingClaimRewardsDebts(uint256 poolId_, uint256[] calldata tokenIds_) external onlyOwnerOrBot {
+        _stakerStorage.nftVault.fixPendingClaimRewardsDebts(poolId_, tokenIds_);
     }
 
     // Compound Methods
