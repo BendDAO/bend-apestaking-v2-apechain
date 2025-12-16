@@ -22,24 +22,13 @@ library ApeStakingLib {
         IApeCoinStaking apeCoinStaking_,
         uint256 poolId
     ) internal view returns (IApeCoinStaking.TimeRange memory) {
-        (
-            IApeCoinStaking.PoolUI memory baycPoolUI,
-            IApeCoinStaking.PoolUI memory maycPoolUI,
-            IApeCoinStaking.PoolUI memory bakcPoolUI
-        ) = apeCoinStaking_.getPoolsUI();
-
-        if (poolId == baycPoolUI.poolId) {
-            return baycPoolUI.currentTimeRange;
+        if (poolId == ApeStakingLib.APE_COIN_POOL_ID) {
+            return IApeCoinStaking.TimeRange(0, 0, 0, 0);
         }
 
-        if (poolId == maycPoolUI.poolId) {
-            return maycPoolUI.currentTimeRange;
-        }
-        if (poolId == bakcPoolUI.poolId) {
-            return bakcPoolUI.currentTimeRange;
-        }
-
-        revert("invalid pool id");
+        IApeCoinStaking.PoolWithoutTimeRange memory poolNoTR = apeCoinStaking_.pools(poolId);
+        IApeCoinStaking.TimeRange memory tr = apeCoinStaking_.getTimeRangeBy(poolId, poolNoTR.lastRewardsRangeIndex);
+        return tr;
     }
 
     function getNftPoolId(IApeCoinStaking apeCoinStaking_, address nft_) internal view returns (uint256) {

@@ -102,10 +102,11 @@ contract PoolViewer is OwnableUpgradeable {
         poolState.coinPoolStakedAmount = staker.stakedApeCoin(0);
 
         (
+            ,
             IApeCoinStaking.PoolUI memory baycPoolUI,
             IApeCoinStaking.PoolUI memory maycPoolUI,
             IApeCoinStaking.PoolUI memory bakcPoolUI
-        ) = apeCoinStaking.getPoolsUI();
+        ) = this.getPoolsUI();
         poolState.baycPoolMaxCap = baycPoolUI.currentTimeRange.capPerPosition;
         poolState.maycPoolMaxCap = maycPoolUI.currentTimeRange.capPerPosition;
         poolState.bakcPoolMaxCap = bakcPoolUI.currentTimeRange.capPerPosition;
