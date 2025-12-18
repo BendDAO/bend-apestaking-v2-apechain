@@ -312,6 +312,7 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 paidFee;
         uint256 remainRewards;
         uint256 rawRewards;
+        uint256[] needClaimAmounts;
     }
 
     function _unstakeNft(
@@ -326,7 +327,7 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(recipient_ != address(0), "nftVault: zero recipient");
         require(recipient_ != address(this), "nftVault: self recipient");
 
-        vars.needClaimTokenIds = _updatePendingClaimTokens(poolId_, tokenIds_);
+        (vars.needClaimTokenIds, vars.needClaimAmounts) = _updatePendingClaimTokens(poolId_, tokenIds_, amounts_, false);
         if (vars.needClaimTokenIds.length == 0) {
             return (0, 0);
         }
@@ -362,7 +363,7 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         _vaultStorage.apeCoinStaking.withdraw{value: vars.fee}(
             poolId_,
             vars.needClaimTokenIds,
-            amounts_,
+            vars.needClaimAmounts,
             address(this)
         );
 
@@ -416,7 +417,8 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         require(recipient_ != address(0), "nftVault: zero recipient");
         require(recipient_ != address(this), "nftVault: self recipient");
 
-        uint256[] memory needClaimTokenIds = _updatePendingClaimTokens(poolId_, tokenIds_);
+        uint256[] memory amounts_ = new uint256[](0);
+        (uint256[] memory needClaimTokenIds, ) = _updatePendingClaimTokens(poolId_, tokenIds_, amounts_, true);
         if (needClaimTokenIds.length == 0) {
             return 0;
         }
@@ -472,49 +474,74 @@ contract NftVault is INftVault, OwnableUpgradeable, ReentrancyGuardUpgradeable {
         emit SingleNftClaimed(nft_, msg.sender, needClaimTokenIds, rewards);
     }
 
-    function _updatePendingClaimTokens(
-        uint256 poolId_,
-        uint256[] memory tokenIds_
-    ) internal returns (uint256[] memory) {
-        IApeCoinStaking.Position memory position_;
+    struct UpdatePendingClaimTokensLocalVars {
+        IApeCoinStaking.Position position_;
         int256 pendingClaimRewardsDebt_;
-        uint256[] memory needClaimTokenIdsRaw_ = new uint256[](tokenIds_.length);
-        uint256 curClaimIdx = 0;
+        uint256 curClaimIdx;
         uint256 tokenId_;
         uint256 rawRewards_;
-        for (uint256 i = 0; i < tokenIds_.length; i++) {
-            tokenId_ = tokenIds_[i];
+        uint256[] needClaimTokenIdsRaw_;
+        uint256[] needClaimAmountsRaw_;
+        uint256[] needClaimTokenIds;
+        uint256[] needClaimAmounts;
+    }
 
-            rawRewards_ = _vaultStorage.apeCoinStaking.pendingRewards(poolId_, tokenId_);
-            if (rawRewards_ == 0) {
+    function _updatePendingClaimTokens(
+        uint256 poolId_,
+        uint256[] memory tokenIds_,
+        uint256[] memory amounts_,
+        bool isClaim
+    ) internal returns (uint256[] memory, uint256[] memory) {
+        UpdatePendingClaimTokensLocalVars memory vars;
+        vars.needClaimTokenIdsRaw_ = new uint256[](tokenIds_.length);
+        if (amounts_.length > 0) {
+            vars.needClaimAmountsRaw_ = new uint256[](tokenIds_.length);
+        }
+        for (uint256 i = 0; i < tokenIds_.length; i++) {
+            vars.tokenId_ = tokenIds_[i];
+
+            vars.rawRewards_ = _vaultStorage.apeCoinStaking.pendingRewards(poolId_, vars.tokenId_);
+            if ((isClaim) && (vars.rawRewards_ == 0)) {
                 continue;
             }
 
-            position_ = _vaultStorage.apeCoinStaking.nftPosition(poolId_, tokenId_);
-            pendingClaimRewardsDebt_ = _vaultStorage.pendingClaimRewardsDebts[poolId_][tokenId_];
+            vars.position_ = _vaultStorage.apeCoinStaking.nftPosition(poolId_, vars.tokenId_);
+            vars.pendingClaimRewardsDebt_ = _vaultStorage.pendingClaimRewardsDebts[poolId_][vars.tokenId_];
 
             // We saved the current rewardsDebt before call ApeCoionStaking claim or unstake.
             // ApeCoinStaking will update the rewardsDebt when claim rewards executed in sync or async callback.
             // If the saved rewardsDebt is equal to the current rewardsDebt,
             // It means that the action is still in pending and waiting for execute callback.
             // And we need to exculde the pending tokenId from the claim list.
-            if ((pendingClaimRewardsDebt_ == 0) || (pendingClaimRewardsDebt_ != position_.rewardsDebt)) {
+            if ((vars.pendingClaimRewardsDebt_ == 0) || (vars.pendingClaimRewardsDebt_ != vars.position_.rewardsDebt)) {
                 // Saving the current rewardsDebt
-                _vaultStorage.pendingClaimRewardsDebts[poolId_][tokenId_] = position_.rewardsDebt;
+                _vaultStorage.pendingClaimRewardsDebts[poolId_][vars.tokenId_] = vars.position_.rewardsDebt;
 
-                needClaimTokenIdsRaw_[curClaimIdx] = tokenId_;
-                curClaimIdx++;
+                vars.needClaimTokenIdsRaw_[vars.curClaimIdx] = vars.tokenId_;
+                if (amounts_.length > 0) {
+                    vars.needClaimAmountsRaw_[vars.curClaimIdx] = amounts_[i];
+                }
+                vars.curClaimIdx++;
             }
         }
 
-        uint256[] memory needClaimTokenIds = new uint256[](curClaimIdx);
-        if (curClaimIdx > 0) {
-            for (uint256 i = 0; i < curClaimIdx; i++) {
-                needClaimTokenIds[i] = needClaimTokenIdsRaw_[i];
+        vars.needClaimTokenIds = new uint256[](vars.curClaimIdx);
+        if (vars.curClaimIdx > 0) {
+            for (uint256 i = 0; i < vars.curClaimIdx; i++) {
+                vars.needClaimTokenIds[i] = vars.needClaimTokenIdsRaw_[i];
             }
         }
 
-        return needClaimTokenIds;
+        if (amounts_.length > 0) {
+            vars.needClaimAmounts = new uint256[](vars.curClaimIdx);
+            if (vars.curClaimIdx > 0) {
+                for (uint256 i = 0; i < vars.curClaimIdx; i++) {
+                    vars.needClaimAmounts[i] = vars.needClaimAmountsRaw_[i];
+                }
+            }
+        }
+
+        return (vars.needClaimTokenIds, vars.needClaimAmounts);
     }
 
     function _clearPendingClaimTokens(uint256 poolId_, uint256[] memory tokenIds_) internal {
